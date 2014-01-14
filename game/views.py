@@ -1,12 +1,15 @@
 import random
 import urllib2
 import json
+import pytz
 from datetime import datetime
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 
 from game.models import User, Room, Images
 
+# The number of seconds a user has to wait between checkins
+USER_WAIT_TIME = 5 * 60
 
 def index(request):
     room_list = Room.objects.all()
@@ -94,6 +97,11 @@ def roomdata(request, room_id):
 def room_not_found(request):
     return render(request, 'game/notinplay.html', {})
 
+def room_wait(request, user_id):
+    user_data = getUserData(user_id)
+    wait_time, seconds = divmod(USER_WAIT_TIME, 60)
+    return render(request, 'game/wait.html', {'wait_time': wait_time, 'user_time': user_data.last_checkin})
+
 def roomcheckin(request, room_id):
     room_data = getRoomData(room_id)
     if not room_data:
@@ -131,6 +139,13 @@ def roomcheckin_validate(request, room_id, user_id):
         if form.is_valid():
 
 	    if form.cleaned_data["image"] == user_data.image:        
+
+                if user_data.last_checkin:
+                    elapsed_time = datetime.now(pytz.timezone('US/Eastern')) - user_data.last_checkin
+                    if elapsed_time.total_seconds() < USER_WAIT_TIME:
+                        return HttpResponseRedirect('/room/wait/%s/' % user_id)
+
+
                 if user_data.status == "ninja":
                     room_data.ninja_total = room_data.ninja_total + 1
                 else:
