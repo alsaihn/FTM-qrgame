@@ -1,0 +1,6 @@
+<h2>Checking into room: {{room.room_name}}</h2>
+
+<form action="/room/{{room.room_id}}/checkin/" method="post">{% csrf_token %}
+  {{ form.as_p }}
+  <input type="submit" value="Submit" />
+</form>

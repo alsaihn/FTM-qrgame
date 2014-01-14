@@ -1,0 +1,10 @@
+<h2>Room List</h2>
+
+<ul>
+{% for room in room_list %}
+  <li>
+    <a href="/room/{{room.room_id}}/">{{ room.room_name }}</a> has {{room.pirate_total}} pirates and {{room.ninja_total}} ninjas
+  </li>
+{% endfor %}
+</ul>
+

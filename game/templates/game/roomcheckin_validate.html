@@ -1,0 +1,29 @@
+<h2>Checking into room: {{room.room_name}}</h2>
+<p>Select your image password</p>
+<form action="/room/{{room.room_id}}/checkin/{{user_id}}/" method="post">{% csrf_token %}
+  {{ form.as_p }}
+
+  {% for im in images %}
+      <p>
+        <input type="radio" name="animals" id="{{ im.name }}" />
+        <img id="{{ im.name }}" src="{{ im.src }}" title="{{im.name}}" height=75 />
+      </p>
+  {% endfor %}
+  <input type="submit" value="Submit" id="validationSubmit" />
+</form>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+<script> 
+
+ $("img").click(function(evt) {
+    var animal = this.id;
+    $("input#" + animal).prop('checked', true).change();
+  });
+
+  $("input[name=animals]:radio").change(function () {
+    var animal = this.id;
+    $("#id_image").val(animal);
+  })
+
+
+</script>
