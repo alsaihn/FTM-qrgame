@@ -1,27 +1,38 @@
+{% extends "base.html"  %}
+
+{% block content %}
+
 <h2>Registering</h2>
 
 <form action="/register/{{badge_number}}/" method="post">{% csrf_token %}
-  <p>Badge number: {{ badge_number }}</p>
-  {{ form.as_p }}
-  <p>Pick an image password:</p>
-  <table>
-  {% for im in images %}
+  <div class="form-group">
+    <label>Your badge number:</label> {{ badge_number }}
+  </div>
+  <div class="form-group">
+    {{ form.as_p }}
+  </div>
+
+  <div class="form-group">
+    <div> <strong>Pick an image password:</strong></div>
+    {% for im in images %}
       {% if not forloop.counter|divisibleby:"2" %}
-      <tr>
+      <div class="row">
       {% endif %}
-      <td>
-        <input type="radio" name="animals" id="{{ im.name }}" />
-        <img id="{{ im.name }}" src="{{ im.src }}" title="{{im.name}}" height=75 />
-      </td>
-      {% if forloop.counter|divisibleby:"2" %}
-      </tr>
+        <img id="{{ im.name }}" src="{{ im.src }}" title="{{im.name}}" style="width:130px;margin:5px;" class="img-thumbnail" />
+      {% if forloop.counter|divisibleby:"2" or forloop.last %}
+        </div>
       {% endif %}
-  {% endfor %}
-  </table>
-  <input type="submit" value="Submit" />
+    {% endfor %}
+  </div>
+  <div class="form-group">
+    <input type="submit" value="Submit" class="btn" />
+  </div>
 </form>
 
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+{% endblock %}
+
+{% block script %}
+
 <script type="text/javascript">
 
 function getQueryVariable(variable)
@@ -37,13 +48,10 @@ function getQueryVariable(variable)
 
   $("img").click(function(evt) {
     var animal = this.id;
-    $("input#" + animal).prop('checked', true).change();
-  });
-
-  $("input[name=animals]:radio").change(function () {
-    var animal = this.id;
+    $("img").removeClass("btn-primary")
+    $(this).addClass("btn-primary")
     $("#id_image").val(animal);
-  })
+  });
 
   var action = $("form").prop('action');
   action = action + "?next=" + getQueryVariable("next");
@@ -51,3 +59,4 @@ function getQueryVariable(variable)
 
 </script>
 
+{% endblock %}

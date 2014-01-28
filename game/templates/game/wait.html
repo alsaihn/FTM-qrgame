@@ -1,0 +1,9 @@
+{% extends "base.html"  %}
+
+{% block content %}
+
+<h2>Time Limit</h2>
+<div>Your last checkin was at: {{user_time}}<div>
+<div>Checkins are allowed once every {{wait_time}} minutes</div>
+
+{% endblock %}

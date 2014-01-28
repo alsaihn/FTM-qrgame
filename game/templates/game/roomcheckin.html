@@ -1,6 +1,18 @@
+{% extends "base.html"  %}
+
+{% block content %}
+
 <h2>Checking into room: {{room.room_name}}</h2>
 
-<form action="/room/{{room.room_id}}/checkin/" method="post">{% csrf_token %}
-  {{ form.as_p }}
-  <input type="submit" value="Submit" />
+<form action="/room/{{room.room_id}}/checkin/" method="post" >
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="form-group">
+    {{ form.badge_numbers.errors }}
+    <label for="id_badge_number" class="control-label">Badge Number:</label>
+    {{ form.badge_number }}
+  </div>
+  <input class="btn" type="submit" value="Submit" />
 </form>
+
+{% endblock %}

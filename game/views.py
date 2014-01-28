@@ -2,9 +2,11 @@ import random
 import urllib2
 import json
 import pytz
-from datetime import datetime
+import hashlib
+from datetime import datetime, date
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.forms.extras.widgets import SelectDateWidget
 
 from game.models import User, Room, Images
 
@@ -39,12 +41,22 @@ def register(request, badge_number):
     response = urllib2.urlopen('https://reg.furthemore.org/Affiliation.ashx?id=' + badge_number)
     data = json.load(response) 
 
-    if 'Error' in data['FurTheMore']:
+    if data['FurTheMore']['Badge']['Affiliation'].lower() == 'none':
         return HttpResponseRedirect('/register/notfound/')
 
     if request.method == 'POST':
 	form = RegisterForm(request.POST)
 	if form.is_valid():
+
+            #salt_hash = hashlib.md5()
+            #salt_hash.update(badge_number)
+            #salt_hash.update("45F0BD1EFDCB4C69951102912B483123")
+            #pass_hash = hashlib.md5()
+            #pass_hash.update(form.cleaned_data['birthdate_year'])
+            #pass_hash.update(form.cleaned_data['birthdate_month'])
+            #pass_hash.update(form.cleaned_data['birthdate_day'])
+            #pass_hash.update(salt_hash.digest())
+            #hash = pass_hash.digest()
 
 	    #todo: check birthdate
 	    user = User()
@@ -160,11 +172,11 @@ def roomcheckin_validate(request, room_id, user_id):
 		return HttpResponseRedirect('/room/%s/checkin/' % room_id)
     else:
 	form = ValidationForm()
-        user_image = Images.objects.get(name=user_data.image)
-        images = list(Images.objects.exclude(name=user_data.image).order_by("?"))[:4]
-        random_idx = random.randint(0,4)
-        images.insert(random_idx, user_image)
 
+    user_image = Images.objects.get(name=user_data.image)
+    images = list(Images.objects.exclude(name=user_data.image).order_by("?"))[:4]
+    random_idx = random.randint(0,4)
+    images.insert(random_idx, user_image)
 
     context = {'room': room_data, 'user_id': user_id, 'images': images, 'form': form}
     return render(request, 'game/roomcheckin_validate.html', context)
@@ -184,8 +196,12 @@ def roomcheckin_done(request, room_id):
 
 from django import forms
 
+years_list = [x for x in range(1920, date.today().year + 1)]
+years_list.reverse()
+BIRTH_YEARS = tuple(years_list)
+
 class RegisterForm(forms.Form):
-    birthdate = forms.DateField()
+    birthdate = forms.DateField(widget=SelectDateWidget(years=BIRTH_YEARS))
     image = forms.CharField(widget=forms.HiddenInput())
 
 class CheckinForm(forms.Form):
