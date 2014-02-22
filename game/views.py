@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.forms.extras.widgets import SelectDateWidget
 
-from game.models import User, Room, Images
+from game.models import User, Room, Images, ActivityLog
 
 # The number of seconds a user has to wait between checkins
 USER_WAIT_TIME = 5 * 60
@@ -17,6 +17,24 @@ def index(request):
     room_list = Room.objects.all()
     context = {'room_list': room_list}
     return render(request, 'game/index.html', context)
+
+
+#########################
+# Log utilities
+
+def logRegistration(user):
+    saveLog(user, "Registration", "Success")
+
+def logCheckin(user, roomid):
+    saveLog(user, "Checkin", roomid)
+
+def saveLog(user, action_type, action):    
+    log_entry = ActivityLog()
+    log_entry.user = user
+    log_entry.action_type = action_type
+    log_entry.action = action
+    log_entry.timestamp = datetime.now()
+    log_entry.save()
 
 #########################
 # User utilities
@@ -46,17 +64,9 @@ def register(request, badge_number):
 
     if request.method == 'POST':
 	form = RegisterForm(request.POST)
+	form.inhash = data['FurTheMore']['Badge']['Birthdate']
+        form.badge_number = badge_number
 	if form.is_valid():
-
-            #salt_hash = hashlib.md5()
-            #salt_hash.update(badge_number)
-            #salt_hash.update("45F0BD1EFDCB4C69951102912B483123")
-            #pass_hash = hashlib.md5()
-            #pass_hash.update(form.cleaned_data['birthdate_year'])
-            #pass_hash.update(form.cleaned_data['birthdate_month'])
-            #pass_hash.update(form.cleaned_data['birthdate_day'])
-            #pass_hash.update(salt_hash.digest())
-            #hash = pass_hash.digest()
 
 	    #todo: check birthdate
 	    user = User()
@@ -65,6 +75,7 @@ def register(request, badge_number):
             user.image = form.cleaned_data['image']
 
             user.save()
+            logRegistration(user)
 
             next = request.GET.get("next", "")
 
@@ -166,6 +177,7 @@ def roomcheckin_validate(request, room_id, user_id):
                 room_data.save()
 		timestamp = datetime.now()
 		setLastCheckin(user_data, timestamp)
+		logCheckin(user_data, room_id)
 
                 return HttpResponseRedirect('/room/%s/checkin/done/' % room_id)
 	    else:
@@ -203,6 +215,24 @@ BIRTH_YEARS = tuple(years_list)
 class RegisterForm(forms.Form):
     birthdate = forms.DateField(widget=SelectDateWidget(years=BIRTH_YEARS))
     image = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super(RegisterForm, self).clean()
+        salt_hash = hashlib.md5()
+        salt_hash.update(self.badge_number)
+        salt_hash.update("45F0BD1EFDCB4C69951102912B483123".encode("UTF-16LE"))
+
+        birthdate = datetime.strftime(cleaned_data.get("birthdate"), '%Y%m%d')
+        pass_hash = hashlib.md5()
+        pass_hash.update(birthdate.encode("UTF-16LE"))
+        pass_hash.update(salt_hash.digest())
+        hash = pass_hash.digest()
+
+	#if self.inhash != hash:
+	#    raise forms.ValidationError("Birthdate must match your registration records.  %s  - %s" % (hash, self.inhash.encode("UTF-16LE")))
+
+	return cleaned_data	
+	
 
 class CheckinForm(forms.Form):
     badge_number = forms.IntegerField()
