@@ -13,9 +13,50 @@ from game.models import User, Room, Images, ActivityLog
 # The number of seconds a user has to wait between checkins
 USER_WAIT_TIME = 5 * 60
 
+#[[ne], [sw]]  lat, lng
+room_bounds = {
+    'Ballroom': [[146.0,136.25],[22.25,136.25],[22.25,110.25],[146.0,110.0],[146.0,136.25]],
+    "Dealer's Den A": [[96.25,136.0],[71.5,136.0],[71.5,110.25],[96.25,110.25],[96.25,136.0]],
+    "Dealer's Den B": [[103,154.5],[80.5,154.5],[80.5,137.25],[103.0,137.25],[103,154.5]],
+    "Artists' Alley": [[106,109.5],[21.25,109.5],[21.25,95.75],[106,95.75],[106,109.5]],
+    'Registration': [[103.5,117.25],[97.0,117.25],[97.0,109.5],[103.5,109.5],[103.5,117.25]],
+    'Portrait Studio': [[206.25,114.0],[193.5,114.0],[193.5,108.5],[206.25,108.5],[206.25,114.0]],
+    'The Zoo': [[169.5,132.75],[148.75,132.75],[148.75,122.5],[169.5,122.5],[169.5,132.75]],
+    'Video Games': [[205.75,103.5],[193.0,103.5],[193.0,95.5],[205.75,95.5],[205.75,103.5]],
+    'Board Games': [[206.0,89.0],[193.0,89.0],[193.0,73.75],[206.0,73.75],[206.0,89.0]],
+    'Panel 1': [[65.25,86.0],[52.5,86.0],[52.5,68.5],[65.25,68.5],[65.25,86.0]],
+    'Medical': [[63.25,60.0],[55.75,60.0],[55.75,49.25],[63.25,49.25],[63.25,60.0]],
+    'INTERNAL -- Operations': [[71.5,60.0],[63.75,60.0],[63.75,49.25],[71.5,49.25],[71.5,60.0]],
+    'Panel 2': [[78.5,60.0],[],[71.75,49.25],[78.5,49.25],[78.5,60.0]],
+    'Panel 3': [[86.0,60.0],[],[78.5,49.25],[86.0,49.25],[86.0,60.0]],
+    'Panel 4': [[93.0,62.25],[],[85.75,49.25],[93.0,49.25],[93.0,62.25]],
+    'The Headless Lounge': [[100.75,60.25],[93.0,60.25],[93.0,49.25],[100.75,49.25],[100.75,60.25]],
+    'Hospitality Suite': [[198,68.25],[192.25,68.25],[192.25,57.5],[198,57.5],[198,68.25]]
+}
+
+def createGeoJson():
+    geojson = {"type": "FeatureCollection",
+        "features": []
+    }
+    room_list = Room.objects.all()
+    for room in room_list:
+        if room.room_name not in room_bounds:
+            break
+	coords = room_bounds[room.room_name]
+        feature = {"type": "Feature",
+		   "geometry": {
+		      "type": "Polygon", "coordinates": [coords]
+		    },
+		    "properties": {"value": room.get_ratio()}
+                  }
+	geojson["features"].append(feature)
+
+    return geojson
+
 def index(request):
     room_list = Room.objects.all()
-    context = {'room_list': room_list}
+    geoJson = createGeoJson()
+    context = {'room_list': room_list, 'geoJson': geoJson}
     return render(request, 'game/index.html', context)
 
 
@@ -35,6 +76,12 @@ def saveLog(user, action_type, action):
     log_entry.action = action
     log_entry.timestamp = datetime.now()
     log_entry.save()
+
+def get_statistics(request):
+    users = User.objects.all()
+    context = {'user_list': users}
+    return render(request, 'game/statistics.html', context)
+
 
 #########################
 # User utilities
@@ -56,7 +103,7 @@ def register_not_found(request):
     return render(request, 'game/notregistered.html', {})
 
 def register(request, badge_number):
-    response = urllib2.urlopen('https://reg.furthemore.org/Affiliation.ashx?id=' + badge_number)
+    response = urllib2.urlopen('https://reg.furthemore.org/Affiliation.ashx?id=' + badge_number + '&hex=true')
     data = json.load(response) 
 
     if data['FurTheMore']['Badge']['Affiliation'].lower() == 'none':
@@ -220,16 +267,16 @@ class RegisterForm(forms.Form):
         cleaned_data = super(RegisterForm, self).clean()
         salt_hash = hashlib.md5()
         salt_hash.update(self.badge_number)
-        salt_hash.update("45F0BD1EFDCB4C69951102912B483123".encode("UTF-16LE"))
+        salt_hash.update("45F0BD1EFDCB4C69951102912B483123")
 
         birthdate = datetime.strftime(cleaned_data.get("birthdate"), '%Y%m%d')
         pass_hash = hashlib.md5()
-        pass_hash.update(birthdate.encode("UTF-16LE"))
+        pass_hash.update(birthdate)
         pass_hash.update(salt_hash.digest())
-        hash = pass_hash.digest()
+        hash = pass_hash.hexdigest()
 
 	#if self.inhash != hash:
-	#    raise forms.ValidationError("Birthdate must match your registration records.  %s  - %s" % (hash, self.inhash.encode("UTF-16LE")))
+	#    raise forms.ValidationError("Birthdate must match your registration records. %s - %s ,  %s" % (self.inhash, hash, birthdate))
 
 	return cleaned_data	
 	

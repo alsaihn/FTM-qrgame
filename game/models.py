@@ -8,6 +8,9 @@ class User(models.Model):
 
 	def __str__(self):
 		return "%s - %s  (%s)" % (self.registration_number, self.status, self.image)
+	
+	def loginCount(self):
+            return self.activitylog_set.filter(action_type="Checkin").count()
 
 
 class Images(models.Model):
@@ -44,3 +47,4 @@ class ActivityLog(models.Model):
 	action_type = models.CharField(max_length=30)
 	action = models.CharField(max_length=250)
         timestamp = models.DateTimeField()   
+

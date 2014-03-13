@@ -1,0 +1,14 @@
+{% extends "base.html"  %}
+
+{% block content %}
+
+<h2>Stats</h2>
+
+<table>
+<tr><th>User Id</th> <th>Logins</th> <th>Last Login</th></tr>
+{% for user in user_list %}
+<tr><td>{{user.registration_number}}</td><td>{{user.loginCount}}</td><td>{{user.last_checkin}}</td></tr>
+{% endfor %}
+</table>
+
+{% endblock %}

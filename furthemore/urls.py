@@ -19,6 +19,8 @@ urlpatterns = patterns('game.views',
 
     url(r'^register/(?P<badge_number>\d+)/$', 'register'),
     url(r'^register/notfound/$', 'register_not_found'),
+
+    url(r'^statistics', 'get_statistics'),
     
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
