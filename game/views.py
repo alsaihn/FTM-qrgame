@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.forms.extras.widgets import SelectDateWidget
 
-from game.models import User, Room, Images, ActivityLog
+from game.models import *
 
 # The number of seconds a user has to wait between checkins
 USER_WAIT_TIME = 5 * 60
