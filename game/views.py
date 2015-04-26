@@ -13,50 +13,10 @@ from game.models import *
 # The number of seconds a user has to wait between checkins
 USER_WAIT_TIME = 5 * 60
 
-#[[ne], [sw]]  lat, lng
-room_bounds = {
-    'Ballroom': [[146.0,136.25],[22.25,136.25],[22.25,110.25],[146.0,110.0],[146.0,136.25]],
-    "Dealer's Den A": [[96.25,136.0],[71.5,136.0],[71.5,110.25],[96.25,110.25],[96.25,136.0]],
-    "Dealer's Den B": [[103,154.5],[80.5,154.5],[80.5,137.25],[103.0,137.25],[103,154.5]],
-    "Artists' Alley": [[106,109.5],[21.25,109.5],[21.25,95.75],[106,95.75],[106,109.5]],
-    'Registration': [[103.5,117.25],[97.0,117.25],[97.0,109.5],[103.5,109.5],[103.5,117.25]],
-    'Portrait Studio': [[206.25,114.0],[193.5,114.0],[193.5,108.5],[206.25,108.5],[206.25,114.0]],
-    'The Zoo': [[169.5,132.75],[148.75,132.75],[148.75,122.5],[169.5,122.5],[169.5,132.75]],
-    'Video Games': [[205.75,103.5],[193.0,103.5],[193.0,95.5],[205.75,95.5],[205.75,103.5]],
-    'Board Games': [[206.0,89.0],[193.0,89.0],[193.0,73.75],[206.0,73.75],[206.0,89.0]],
-    'Panel 1': [[65.25,86.0],[52.5,86.0],[52.5,68.5],[65.25,68.5],[65.25,86.0]],
-    'Medical': [[63.25,60.0],[55.75,60.0],[55.75,49.25],[63.25,49.25],[63.25,60.0]],
-    'INTERNAL -- Operations': [[71.5,60.0],[63.75,60.0],[63.75,49.25],[71.5,49.25],[71.5,60.0]],
-    'Panel 2': [[78.5,60.0],[],[71.75,49.25],[78.5,49.25],[78.5,60.0]],
-    'Panel 3': [[86.0,60.0],[],[78.5,49.25],[86.0,49.25],[86.0,60.0]],
-    'Panel 4': [[93.0,62.25],[],[85.75,49.25],[93.0,49.25],[93.0,62.25]],
-    'The Headless Lounge': [[100.75,60.25],[93.0,60.25],[93.0,49.25],[100.75,49.25],[100.75,60.25]],
-    'Hospitality Suite': [[198,68.25],[192.25,68.25],[192.25,57.5],[198,57.5],[198,68.25]]
-}
 
-def createGeoJson():
-    geojson = {"type": "FeatureCollection",
-        "features": []
-    }
-    room_list = Room.objects.all()
-    for room in room_list:
-        if room.room_name not in room_bounds:
-            break
-	coords = room_bounds[room.room_name]
-        feature = {"type": "Feature",
-		   "geometry": {
-		      "type": "Polygon", "coordinates": [coords]
-		    },
-		    "properties": {"value": room.get_ratio()}
-                  }
-	geojson["features"].append(feature)
-
-    return geojson
 
 def index(request):
-    room_list = Room.objects.all()
-    geoJson = createGeoJson()
-    context = {'room_list': room_list, 'geoJson': geoJson}
+    context = {}
     return render(request, 'game/index.html', context)
 
 
@@ -131,6 +91,7 @@ def register(request, badge_number):
             return HttpResponseRedirect('/')
     else:		
         form = RegisterForm()
+        
     form_images = Images.objects.order_by("?")
 
     context = {'form': form, 'badge_number': badge_number, 'images': form_images}
@@ -138,64 +99,74 @@ def register(request, badge_number):
 
 
 #########################
-# Room utilities
+# Group utilities
 
-def getRoomData(id):
-    if Room.objects.filter(room_id=id).exists():
-	return Room.objects.get(room_id=id)
+def getGroupData(id):
+    if Group.objects.filter(group_id=id).exists():
+		return Group.objects.get(group_id=id)
     return None
+    
+def getQrData(id):
+    if QrCode.objects.filter(qr_id=id).exists():
+		return QrCode.objects.get(qr_id=id)
+    return None
+    
 
 
 #########################
-# Room endpoints
+# Group endpoints
 
 
-def roomlist(request):
-    room_list = Room.objects.all()
-    context = {'room_list': room_list}
+def grouplist(request):
+    group_list = Group.objects.all()
+    context = {'group_list': group_list}
     return render(request, 'game/roomlist.html', context)
     
-def roomdata(request, room_id):
-    room_data = getRoomData(room_id)
-    if not room_data:
-        return HttpResponseRedirect('/room/notfound/')
+def groupdata(request, group_id):
+    group_data = getGroupData(group_id)
+    if not group_data:
+        return HttpResponseRedirect('/group/notfound/')
     
-    context = {'room': room_data}
-    return render(request, 'game/roomdata.html', context)
+    user_list = User.objects.filter(status=group_data.group_name.lower())
+    context = {'group': group_data, 'user_list': user_list}
+    return render(request, 'game/groupdata.html', context)
     
-
-def room_not_found(request):
+def group_not_found(request):
     return render(request, 'game/notinplay.html', {})
 
-def room_wait(request, user_id):
+
+#########################
+# Qr endpoints
+
+def qr_not_found(request):
+    return render(request, 'game/notinplay.html', {})
+
+def qr_wait(request, user_id):
     user_data = getUserData(user_id)
     wait_time, seconds = divmod(USER_WAIT_TIME, 60)
     return render(request, 'game/wait.html', {'wait_time': wait_time, 'user_time': user_data.last_checkin})
 
-def roomcheckin(request, room_id):
-    room_data = getRoomData(room_id)
-    if not room_data:
-        return HttpResponseRedirect('/room/notfound/')
-    
-    if not room_data.in_play:
-        return HttpResponseRedirect('/room/notfound/')
+def qrcheckin(request, qr_id):
+	qr_data = getQrData(qr_id)
+	if not qr_data:
+		return HttpResponseRedirect('/qr/notfound/')
 
-    if request.method == 'POST':
-	form = CheckinForm(request.POST)
-        if form.is_valid():
+	if request.method == 'POST':
+		form = CheckinForm(request.POST)
+		if form.is_valid():
 
-            user_data = getUserData(form.cleaned_data["badge_number"])
-            if not user_data:
-		return HttpResponseRedirect('/register/%s/?next=/room/%s/checkin/%s/' % (form.cleaned_data["badge_number"], room_id, form.cleaned_data["badge_number"]))
+			user_data = getUserData(form.cleaned_data["badge_number"])
+			if not user_data:
+				return HttpResponseRedirect('/register/%s/?next=/qr/%s/checkin/%s/' % (form.cleaned_data["badge_number"], qr_id, form.cleaned_data["badge_number"]))
 	    
-            return HttpResponseRedirect('/room/%s/checkin/%s/' % (room_id, user_data.registration_number))
-    else:
-	form = CheckinForm()
+			return HttpResponseRedirect('/qr/%s/checkin/%s/' % (qr_id, user_data.registration_number))
+	else:
+		form = CheckinForm()
 
-    context = {'room': room_data, 'form': form}
-    return render(request, 'game/roomcheckin.html', context)
+	context = {'qr': qr_data, 'form': form}
+	return render(request, 'game/roomcheckin.html', context)
 
-def roomcheckin_validate(request, room_id, user_id):
+def qrcheckin_validate(request, room_id, user_id):
     room_data = getRoomData(room_id)
     if not room_data:
         return HttpResponseRedirect('/room/notfound/')
@@ -241,7 +212,7 @@ def roomcheckin_validate(request, room_id, user_id):
     return render(request, 'game/roomcheckin_validate.html', context)
     
 
-def roomcheckin_done(request, room_id):
+def qrcheckin_done(request, room_id):
     room_data = getRoomData(room_id)
     if not room_data:
         return HttpResponseRedirect('/room/notfound/')
@@ -274,9 +245,6 @@ class RegisterForm(forms.Form):
         pass_hash.update(birthdate)
         pass_hash.update(salt_hash.digest())
         hash = pass_hash.hexdigest()
-
-	#if self.inhash != hash:
-	#    raise forms.ValidationError("Birthdate must match your registration records. %s - %s ,  %s" % (self.inhash, hash, birthdate))
 
 	return cleaned_data	
 	

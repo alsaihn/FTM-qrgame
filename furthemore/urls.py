@@ -9,13 +9,16 @@ urlpatterns = patterns('game.views',
     # Examples:
     # url(r'^$', 'furthemore.views.home', name='home'),
     url(r'^$', 'index'),
-    url(r'^room/$', 'roomlist'),
-    url(r'^room/notfound/$', 'room_not_found'),
-    url(r'^room/wait/(?P<user_id>\d+)/$', 'room_wait'),
-    url(r'^room/(?P<room_id>\d+)/$', 'roomdata'),
-    url(r'^room/(?P<room_id>\d+)/checkin/$', 'roomcheckin'),
-    url(r'^room/(?P<room_id>\d+)/checkin/(?P<user_id>\d+)/$', 'roomcheckin_validate'),
-    url(r'^room/(?P<room_id>\d+)/checkin/done/$', 'roomcheckin_done'),
+    url(r'^group/$', 'grouplist'),
+    url(r'^group/notfound/$', 'group_not_found'),
+    url(r'^group/(?P<group_id>\d+)/$', 'groupdata'),
+    
+    
+    url(r'^qr/notfound/$', 'qr_not_found'),
+    url(r'^qr/wait/(?P<user_id>\d+)/$', 'qr_wait'),
+    url(r'^qr/(?P<qr_id>\d+)/checkin/$', 'qrcheckin'),
+    url(r'^qr/(?P<qr_id>\d+)/checkin/(?P<user_id>\d+)/$', 'qrcheckin_validate'),
+    url(r'^qr/(?P<qr_id>\d+)/checkin/done/$', 'qrcheckin_done'),
 
     url(r'^register/(?P<badge_number>\d+)/$', 'register'),
     url(r'^register/notfound/$', 'register_not_found'),

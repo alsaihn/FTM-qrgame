@@ -2,12 +2,13 @@
 
 {% block content %}
 
-<h2>Room List</h2>
+<h2>Group List</h2>
 
 <ul>
-{% for room in room_list %}
+{% for group in group_list %}
   <li>
-    <a href="/room/{{room.room_id}}/">{{ room.room_name }}</a> has {{room.pirate_total}} pirates and {{room.ninja_total}} ninjas
+    <a href="/group/{{group.group_id}}/">{{ group.group_name }}</a>
+    {{group.group_total}} pieces of evidence
   </li>
 {% endfor %}
 </ul>
