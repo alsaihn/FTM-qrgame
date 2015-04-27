@@ -1,0 +1,17 @@
+{% extends "base.html"  %}
+
+{% block content %}
+
+<h2>Group Data</h2>
+
+<div>Name: {{group.group_name}}</div>
+<div>Total Evidence: {{group.group_total}}</div>
+
+<br/>
+
+<div>Investigators:</div>
+{% for user in user_list %}
+	<div>{{user.name}}: {{user.loginCount}}</div>
+{% endfor %}
+
+{% endblock %}

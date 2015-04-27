@@ -26,20 +26,21 @@ def index(request):
 def logRegistration(user):
     saveLog(user, "Registration", "Success")
 
-def logCheckin(user, roomid):
-    saveLog(user, "Checkin", roomid)
+def logCheckin(user, qrid):
+    saveLog(user, "Checkin", qrid)
 
 def saveLog(user, action_type, action):    
     log_entry = ActivityLog()
     log_entry.user = user
     log_entry.action_type = action_type
     log_entry.action = action
-    log_entry.timestamp = datetime.now()
+    log_entry.timestamp = datetime.datetime.now()
     log_entry.save()
 
 def get_statistics(request):
     users = User.objects.all()
-    context = {'user_list': users}
+    groups = Group.objects.all()
+    context = {'user_list': users, 'group_list': groups}
     return render(request, 'game/statistics.html', context)
 
 
@@ -48,7 +49,7 @@ def get_statistics(request):
 
 def getUserData(id):
     if User.objects.filter(registration_number=id).exists():
-	return User.objects.get(registration_number=id)
+		return User.objects.get(registration_number=id)
     return None
 
 
@@ -63,32 +64,34 @@ def register_not_found(request):
     return render(request, 'game/notregistered.html', {})
 
 def register(request, badge_number):
-    response = urllib2.urlopen('https://reg.furthemore.org/Affiliation.ashx?id=' + badge_number + '&hex=true')
+    response = urllib2.urlopen('https://reg.furthemore.org/Affiliation.ashx?id=' + badge_number)
     data = json.load(response) 
 
     if data['FurTheMore']['Badge']['Affiliation'].lower() == 'none':
         return HttpResponseRedirect('/register/notfound/')
 
     if request.method == 'POST':
-	form = RegisterForm(request.POST)
-	form.inhash = data['FurTheMore']['Badge']['Birthdate']
-        form.badge_number = badge_number
-	if form.is_valid():
+		form = RegisterForm(request.POST)
+		
+		if form.is_valid():
+			
+			if form.cleaned_data['birthdate'].strftime('%Y%m%d') == data['FurTheMore']['Badge']['Birthdate']:				
 
-	    #todo: check birthdate
-	    user = User()
-	    user.registration_number = badge_number
-            user.status = data['FurTheMore']['Badge']['Affiliation'].lower()
-            user.image = form.cleaned_data['image']
+				user = User()
+				user.registration_number = badge_number
+				user.status = data['FurTheMore']['Badge']['Affiliation']
+				user.image = form.cleaned_data['image']
+				user.last_checkin = datetime.datetime(2000,01,01,00,00)
 
-            user.save()
-            logRegistration(user)
+				user.save()
+				logRegistration(user)
 
-            next = request.GET.get("next", "")
+				next = request.GET.get("next", "")
 
-	    if next:
-	            return HttpResponseRedirect(next)
-            return HttpResponseRedirect('/')
+				if next:
+					return HttpResponseRedirect(next)
+				return HttpResponseRedirect('/')
+		
     else:		
         form = RegisterForm()
         
@@ -166,58 +169,55 @@ def qrcheckin(request, qr_id):
 	context = {'qr': qr_data, 'form': form}
 	return render(request, 'game/roomcheckin.html', context)
 
-def qrcheckin_validate(request, room_id, user_id):
-    room_data = getRoomData(room_id)
-    if not room_data:
-        return HttpResponseRedirect('/room/notfound/')
+def qrcheckin_validate(request, qr_id, user_id):
+	qr_data = getQrData(qr_id)
+	if not qr_data:
+		return HttpResponseRedirect('/qr/notfound/')
 
-    user_data = getUserData(user_id)
-    if not user_data:
-	return HttpResponseRedirect('/register/%s/?next=/room/%s/checkin/%s/' % (user_id, room_id, user_id))
+	user_data = getUserData(user_id)
+	if not user_data:
+		return HttpResponseRedirect('/register/%s/?next=/qr/%s/checkin/%s/' % (user_id, qr_id, user_id))
 
-    if request.method == 'POST':
-	form = ValidationForm(request.POST)
-        if form.is_valid():
+	if request.method == 'POST':
+		form = ValidationForm(request.POST)
+		if form.is_valid():
 
-	    if form.cleaned_data["image"] == user_data.image:        
+			if form.cleaned_data["image"] == user_data.image:        
 
-                if user_data.last_checkin:
-                    elapsed_time = datetime.now(pytz.timezone('US/Eastern')) - user_data.last_checkin
-                    if elapsed_time.total_seconds() < USER_WAIT_TIME:
-                        return HttpResponseRedirect('/room/wait/%s/' % user_id)
+				if user_data.last_checkin:
+					elapsed_time = datetime.datetime.now() - user_data.last_checkin
+					if elapsed_time.seconds < USER_WAIT_TIME:
+						return HttpResponseRedirect('/qr/wait/%s/' % user_id)
 
+				group_data = Group.objects.get(group_name=user_data.status)
+				group_data.group_total += 1				
+				group_data.save()
+				
+				timestamp = datetime.datetime.now()
+				setLastCheckin(user_data, timestamp)
+				logCheckin(user_data, qr_id)
+	
+				return HttpResponseRedirect('/qr/%s/checkin/done/' % qr_id)
+			else:
+				return HttpResponseRedirect('/qr/%s/checkin/' % qr_id)
+	else:
+		form = ValidationForm()
 
-                if user_data.status == "ninja":
-                    room_data.ninja_total = room_data.ninja_total + 1
-                else:
-                    room_data.pirate_total = room_data.pirate_total + 1
+	user_image = Images.objects.get(name=user_data.image)
+	images = list(Images.objects.exclude(name=user_data.image).order_by("?"))[:4]
+	random_idx = random.randint(0,4)
+	images.insert(random_idx, user_image)
 
-                room_data.save()
-		timestamp = datetime.now()
-		setLastCheckin(user_data, timestamp)
-		logCheckin(user_data, room_id)
-
-                return HttpResponseRedirect('/room/%s/checkin/done/' % room_id)
-	    else:
-		return HttpResponseRedirect('/room/%s/checkin/' % room_id)
-    else:
-	form = ValidationForm()
-
-    user_image = Images.objects.get(name=user_data.image)
-    images = list(Images.objects.exclude(name=user_data.image).order_by("?"))[:4]
-    random_idx = random.randint(0,4)
-    images.insert(random_idx, user_image)
-
-    context = {'room': room_data, 'user_id': user_id, 'images': images, 'form': form}
-    return render(request, 'game/roomcheckin_validate.html', context)
+	context = {'qr': qr_data, 'user_id': user_id, 'images': images, 'form': form}
+	return render(request, 'game/roomcheckin_validate.html', context)
     
 
-def qrcheckin_done(request, room_id):
-    room_data = getRoomData(room_id)
-    if not room_data:
-        return HttpResponseRedirect('/room/notfound/')
+def qrcheckin_done(request, qr_id):
+    qr_data = getQrData(qr_id)
+    if not qr_data:
+        return HttpResponseRedirect('/qr/notfound/')
 
-    context = {'room': room_data}
+    context = {'qr': qr_data}
     return render(request, 'game/roomcheckindone.html', context)
     
 
@@ -233,20 +233,6 @@ BIRTH_YEARS = tuple(years_list)
 class RegisterForm(forms.Form):
     birthdate = forms.DateField(widget=SelectDateWidget(years=BIRTH_YEARS))
     image = forms.CharField(widget=forms.HiddenInput())
-
-    def clean(self):
-        cleaned_data = super(RegisterForm, self).clean()
-        salt_hash = hashlib.md5()
-        salt_hash.update(self.badge_number)
-        salt_hash.update("45F0BD1EFDCB4C69951102912B483123")
-
-        birthdate = datetime.strftime(cleaned_data.get("birthdate"), '%Y%m%d')
-        pass_hash = hashlib.md5()
-        pass_hash.update(birthdate)
-        pass_hash.update(salt_hash.digest())
-        hash = pass_hash.hexdigest()
-
-	return cleaned_data	
 	
 
 class CheckinForm(forms.Form):
