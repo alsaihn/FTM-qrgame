@@ -114,7 +114,11 @@ def getQrData(id):
 		return QrCode.objects.get(qr_id=id)
     return None
     
-
+def getPanelData(id):
+    if Panel.objects.filter(panel_id=id).exists():
+		return Panel.objects.get(panel_id=id)
+    return None
+    
 
 #########################
 # Group endpoints
@@ -139,6 +143,31 @@ def group_not_found(request):
 
 
 #########################
+# Panel endpoints
+
+def panelcheckin(request, panel_id):
+	panel_data = getPanelData(panel_id)
+	qr_data = panel.qr
+	if not qr_data:
+		return HttpResponseRedirect('/qr/notfound/')
+
+	if request.method == 'POST':
+		form = CheckinForm(request.POST)
+		if form.is_valid():
+
+			user_data = getUserData(form.cleaned_data["badge_number"])
+			if not user_data:
+				return HttpResponseRedirect('/register/%s/?next=/qr/%s/checkin/%s/' % (form.cleaned_data["badge_number"], qr_id, form.cleaned_data["badge_number"]))
+	    
+			return HttpResponseRedirect('/qr/%s/checkin/%s/' % (qr_id, user_data.registration_number))
+	else:
+		form = CheckinForm()
+
+	context = {'qr': qr_data, 'form': form}
+	return render(request, 'game/roomcheckin.html', context)
+
+
+#########################
 # Qr endpoints
 
 def qr_not_found(request):
@@ -148,6 +177,7 @@ def qr_wait(request, user_id):
     user_data = getUserData(user_id)
     wait_time, seconds = divmod(USER_WAIT_TIME, 60)
     return render(request, 'game/wait.html', {'wait_time': wait_time, 'user_time': user_data.last_checkin})
+	
 
 def qrcheckin(request, qr_id):
 	qr_data = getQrData(qr_id)
@@ -219,7 +249,30 @@ def qrcheckin_done(request, qr_id):
 
     context = {'qr': qr_data}
     return render(request, 'game/roomcheckindone.html', context)
-    
+
+
+def qrgenerate(request):
+	qr_list = []
+	if request.method == 'POST':
+		form = GenerateForm(request.POST)
+		if form.is_valid():
+			count = form.cleaned_data['count']
+			for (i=0;i<count;i++)
+				qr = new QrCode()
+				qr.value = form.cleaned_data['value']
+				qr.use_count = form.cleaned_data['use_count']
+				#make qr code
+				if form.cleaned_data['panel']:
+					panel = getPanelData(form.cleaned_data['panel'])
+					qr.panel = panel
+				qr_list.append(qr)	
+			
+	else:
+		form = GenerateForm()
+
+	context = {'form': form, 'qr_list': qr_list}
+	return render(request, 'game/qrgenerate.html', context)
+
 
 #########################
 # Forms  
@@ -241,3 +294,12 @@ class CheckinForm(forms.Form):
 
 class ValidationForm(forms.Form):
     image = forms.CharField(widget=forms.HiddenInput())
+    
+    
+class GenerateForm(forms.Form):
+	group = forms.CharField()  #todo: select field here
+	value = forms.IntegerField()
+	use_count = forms.IntegerFieldField(default=1)
+	count = forms.IntegerField()
+	panel = forms.CharField() #todo: select field here
+	

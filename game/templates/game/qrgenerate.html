@@ -1,0 +1,25 @@
+{% extends "base.html"  %}
+
+{% block content %}
+
+<h2>QR Code Generator</h2>
+
+
+<form action="/qr/generate/" method="post">{% csrf_token %}
+  <div class="form-group">
+    {{ form.as_p }}
+  </div>
+
+  <div class="form-group">
+    <input type="submit" value="Submit" class="btn" />
+  </div>
+</form>
+
+
+<div>
+	{% for qr in qr_list %}
+
+	{% endfor %}
+</div>
+
+{% endblock %}

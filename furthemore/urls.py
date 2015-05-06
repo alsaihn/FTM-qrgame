@@ -12,13 +12,16 @@ urlpatterns = patterns('game.views',
     url(r'^group/$', 'grouplist'),
     url(r'^group/notfound/$', 'group_not_found'),
     url(r'^group/(?P<group_id>\d+)/$', 'groupdata'),
-    
+
+	url(r'^panel/(?P<panel_id>\d+)/checkin/$', 'panelcheckin'),
     
     url(r'^qr/notfound/$', 'qr_not_found'),
     url(r'^qr/wait/(?P<user_id>\d+)/$', 'qr_wait'),
     url(r'^qr/(?P<qr_id>\d+)/checkin/$', 'qrcheckin'),
     url(r'^qr/(?P<qr_id>\d+)/checkin/(?P<user_id>\d+)/$', 'qrcheckin_validate'),
     url(r'^qr/(?P<qr_id>\d+)/checkin/done/$', 'qrcheckin_done'),
+
+	url(r'^qr/generate/$', 'qrgenerate'),
 
     url(r'^register/(?P<badge_number>\d+)/$', 'register'),
     url(r'^register/notfound/$', 'register_not_found'),
